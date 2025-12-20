@@ -4,6 +4,7 @@ import cors from "cors";
 /* Import existing API handlers */
 import signupHandler from "./api/auth/signup.js";
 import loginHandler from "./api/auth/login.js";
+import dishesRoutes from "./api/dishes.js";
 
 const app = express();
 
@@ -15,6 +16,7 @@ app.use(express.json());
 ========================= */
 app.post("/api/auth/signup", signupHandler);
 app.post("/api/auth/login", loginHandler);
+app.use("/api/dishes", dishesRoutes);
 
 /* =========================
    SERVER START
