@@ -37,7 +37,6 @@ export default async function handler(req, res) {
     profilename,
     email,
     password: hashedPassword,
-    profile_image: null,
     is_active: false,
     gender: null,
     dob: null,
