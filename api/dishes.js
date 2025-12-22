@@ -9,7 +9,7 @@ const router = express.Router();
  * GET /api/dishes
  * Protected route
  */
-router.get("/all", authMiddleware, async (req, res) => {
+router.get("/all", async (req, res) => {
   try {
     const { data, error } = await supabaseAdmin
       .from("dishes")
