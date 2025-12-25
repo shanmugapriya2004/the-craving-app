@@ -98,11 +98,13 @@ router.get("/my-orders", authMiddleware, async (req, res) => {
       .from("orders")
       .select(
         `
-        id,
-        created_at,
-        order_status,
-        total
-      `
+    id,
+    created_at,
+    packed_at,
+    delivered_at,
+    order_status,
+    total
+  `
       )
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
@@ -132,7 +134,8 @@ router.get("/my-orders", authMiddleware, async (req, res) => {
         quantity,
         price,
         dishes (
-          name
+          name,
+          image_url
         )
       `
       )
@@ -153,6 +156,7 @@ router.get("/my-orders", authMiddleware, async (req, res) => {
       itemsByOrder[item.order_id].push({
         productId: item.product_id,
         productName: item.dishes?.name || null,
+        productImage: item.dishes?.image_url || null,
         price: item.price,
         qty: item.quantity,
       });
@@ -162,21 +166,40 @@ router.get("/my-orders", authMiddleware, async (req, res) => {
    4️⃣ Build Orders Response
 ----------------------------- */
     const formattedOrders = orders.map((order) => {
-      const dateObj = new Date(order.created_at);
-      const dishes = itemsByOrder[order.id] || [];
+      // pick correct timestamp
+      let timestamp;
 
+      switch (order.order_status) {
+        case "PACKED":
+          timestamp = order.packed_at;
+          break;
+        case "DELIVERED":
+          timestamp = order.delivered_at;
+          break;
+        default:
+          timestamp = order.created_at;
+      }
+
+      const dateObj = new Date(timestamp);
+      const dishes = itemsByOrder[order.id] || [];
       return {
         orderId: order.id,
+
         date: dateObj.toLocaleDateString("en-IN", {
+          timeZone: "Asia/Kolkata", // ✅ FORCE IST
           weekday: "short",
           day: "2-digit",
           month: "short",
+          year: "numeric",
         }),
+
         time: dateObj.toLocaleTimeString("en-IN", {
+          timeZone: "Asia/Kolkata", // ✅ FORCE IST
           hour: "numeric",
           minute: "2-digit",
           hour12: true,
         }),
+
         orderStatus: order.order_status,
         totalPrice: order.total,
         dishesCount: dishes.length, // ✅ per-order dishes count
