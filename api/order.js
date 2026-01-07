@@ -8,14 +8,20 @@ const router = express.Router();
  * POST /api/orders/add
  */
 router.post("/add", authMiddleware, async (req, res) => {
-  const { dishes, summary, payment_method, address } = req.body;
+  const { cart_id, dishes, summary, payment_method, address } = req.body;
 
-  // 🔑 Decide userId source
+  // 🔑 User ID from auth middleware
   const userId = req.user.userid;
 
-  // 🔴 Validations
+  /* -----------------------------
+     🔴 Validations
+  ----------------------------- */
   if (!userId) {
     return res.status(400).json({ message: "User ID is required" });
+  }
+
+  if (!cart_id) {
+    return res.status(400).json({ message: "Cart ID is required" });
   }
 
   if (!Array.isArray(dishes) || dishes.length === 0) {
@@ -67,7 +73,20 @@ router.post("/add", authMiddleware, async (req, res) => {
     if (itemsError) throw itemsError;
 
     /* -----------------------------
-       3️⃣ Response
+       3️⃣ Mark Cart as Ordered ✅
+    ----------------------------- */
+    const { error: cartError } = await supabase
+      .from("cart")
+      .update({
+        is_ordered: true,
+      })
+      .eq("id", cart_id)
+      .eq("user_id", userId); // security check
+
+    if (cartError) throw cartError;
+
+    /* -----------------------------
+       4️⃣ Response
     ----------------------------- */
     return res.status(201).json({
       message: "Order placed successfully",
