@@ -9,37 +9,14 @@ const router = express.Router();
  */
 router.post("/add", authMiddleware, async (req, res) => {
   const { cart_id, dishes, summary, payment_method, address } = req.body;
-
-  // 🔑 User ID from auth middleware
   const userId = req.user.userid;
 
-  /* -----------------------------
-     🔴 Validations
-  ----------------------------- */
-  if (!userId) {
-    return res.status(400).json({ message: "User ID is required" });
-  }
-
-  if (!cart_id) {
-    return res.status(400).json({ message: "Cart ID is required" });
-  }
-
-  if (!Array.isArray(dishes) || dishes.length === 0) {
-    return res.status(400).json({ message: "No dishes provided" });
-  }
-
-  if (!summary?.subtotal || !summary?.total) {
-    return res.status(400).json({ message: "Invalid order summary" });
-  }
-
-  if (!address) {
-    return res.status(400).json({ message: "Address is required" });
+  if (!userId || !cart_id || !Array.isArray(dishes) || dishes.length === 0) {
+    return res.status(400).json({ message: "Invalid request" });
   }
 
   try {
-    /* -----------------------------
-       1️⃣ Create Order
-    ----------------------------- */
+    /* 1️⃣ Create Order */
     const { data: order, error: orderError } = await supabase
       .from("orders")
       .insert({
@@ -56,9 +33,7 @@ router.post("/add", authMiddleware, async (req, res) => {
 
     if (orderError) throw orderError;
 
-    /* -----------------------------
-       2️⃣ Insert Order Items
-    ----------------------------- */
+    /* 2️⃣ Insert Order Items */
     const orderItems = dishes.map((item) => ({
       order_id: order.id,
       product_id: item.productid,
@@ -72,33 +47,31 @@ router.post("/add", authMiddleware, async (req, res) => {
 
     if (itemsError) throw itemsError;
 
-    /* -----------------------------
-       3️⃣ Mark Cart as Ordered ✅
-    ----------------------------- */
-    const { error: cartError } = await supabase
+    /* 3️⃣ Mark Cart as Ordered */
+    const { error: cartUpdateError } = await supabase
       .from("cart")
-      .update({
-        is_ordered: true,
-      })
+      .update({ is_ordered: true })
       .eq("id", cart_id)
-      .eq("user_id", userId); // security check
+      .eq("user_id", userId);
 
-    if (cartError) throw cartError;
+    if (cartUpdateError) throw cartUpdateError;
 
-    /* -----------------------------
-       4️⃣ Response
-    ----------------------------- */
+    /* 4️⃣ Delete Cart */
+    const { error: deleteCartError } = await supabase
+      .from("cart")
+      .delete()
+      .eq("id", cart_id)
+      .eq("user_id", userId);
+
+    if (deleteCartError) throw deleteCartError;
+
     return res.status(201).json({
       message: "Order placed successfully",
       order_id: order.id,
-      status: order.order_status,
-      user_id: userId,
     });
   } catch (error) {
     console.error("Order creation error:", error);
-    return res.status(500).json({
-      message: "Failed to place order",
-    });
+    return res.status(500).json({ message: "Failed to place order" });
   }
 });
 
